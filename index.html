@@ -1,0 +1,334 @@
+<!DOCTYPE HTML>
+<html lang="en">
+  <head>
+    <title>Suicide Globe</title>
+    <meta charset="utf-8">
+    <style type="text/css">
+      html {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #000000 url(loading.gif) center center no-repeat;
+        color: #ffffff;
+        font-family: sans-serif;
+        font-size: 13px;
+        line-height: 20px;
+        height: 100%;
+      }
+      #info {
+        font-size: 11px;
+        position: absolute;
+        bottom: 5px;
+        background-color: rgba(0,0,0,0.8);
+        border-radius: 3px;
+        right: 10px;
+        padding: 10px;
+      }
+      #currentInfo {
+        width: 270px;
+        position: absolute;
+        left: 20px;
+        top: 63px;
+		text-align = center;
+        background-color: rgba(0,0,0,0.40);
+        border-top: 1px solid rgba(255,255,255,0.4);
+        padding: 10px;
+      }
+	  
+	  #currentInfoStatus {
+		text-align = center;
+		font-size: 14px;
+	  }
+      a {
+        color: #aaa;
+        text-decoration: none;
+      }
+      a:hover {
+        text-decoration: underline;
+      }
+      .bull {
+        padding: 0 5px;
+        color: #555;
+      }
+      #title {
+        position: absolute;
+        top: 20px;
+        width: 1270px;
+        left: 20px;
+        background-color: rgba(0,0,0,0.2);
+        border-radius: 3px;
+        font: 20px Georgia;
+        padding: 10px;
+      }
+      .time {
+        font: 16px Georgia;
+        line-height: 26px;
+        height: 80px;
+        text-align: center;
+        float: left;
+        width: 90px;
+        cursor: pointer;
+      }
+      #ce span {
+        display: none;
+      }
+      #ce {
+        width: 107px;
+        height: 55px;
+        display: block;
+        position: absolute;
+        bottom: 15px;
+        left: 20px;
+      }
+	  
+    </style>
+  </head>
+  <body>
+
+  <div id="container"></div>
+
+  <div id="info">
+  	<span><strong><a href="https://www.113.nl/">Maak je je zorgen om iemand met suïcidale gedachten of heb jezelf problemen? Neem dan contact op met 113</a> </strong></span>
+    <span class="bull">&bull;</span><span><a href="http://www.chromeexperiments.com/globe">WebGL Globe - originally from Google</a> </span>
+	<span class="bull">&bull;</span><a href="https://short-funny.com/"> Program by Edwin de Haan</a>
+	<span class="bull">&bull;</span><a href="https://short-funny.com/"> Concept by Matthias v/d Waal</a>
+  </div>
+
+  <div id="currentInfo">
+    <span id="all_day"><a class="time" onclick="changePrev()"><img id="prev" src="prev.png"></a></span>
+	<span id="all_week"><a class="time" onclick="loadFreq('freq.json')"><img id="play" src="play.png"></a></span>
+	<span id="all_month"><a class="time" onclick="changeNext()"><img id="next" src="next.png"></a></span>
+	<span><div id="currentInfoStatus"></div></span>
+	
+  </div>
+  
+	
+  
+
+  <div id="title">
+    800.000 mensen plegen per jaar zelfmoord, dat is 90 personen elk uur.
+  </div>
+
+  <a id="ce" href="http://www.chromeexperiments.com/globe">
+
+  </a>
+
+  <script type="text/javascript" src="third-party/Detector.js"></script>
+  <script type="text/javascript" src="third-party/three.min.js"></script>
+  <script type="text/javascript" src="third-party/Tween.js"></script>
+  <script type="text/javascript" src="globe.js"></script>
+  <script type="text/javascript" src="moment.js"></script>
+  <script type="text/javascript">
+    var maxpoint=0.250;
+//	var pointdata=[40.3436661, -124.4748306, 0.20421052631578948, 63.4922, -147.4552, 0.1368421052631579, 38.800499, -122.7440033, 0.1031578947368421, 60.1589, -141.3549, 0.1368421052631579, 38.838665, -122.8398361, 0.16842105263157894];
+	var pointdata=[40.3436661, -124.4748306, 1, 63.4922, -147.4552, 0.75, 38.800499, -122.7440033, 0.5, 60.1589, -141.3549, 0.250, 38.838665, -122.8398361, 0.125];
+
+    var d = new Date();
+    var t = d.getTime()/1000;
+	var data;
+	var update=false;
+	var limit=3600;
+	var change=0;
+	
+	if(!Detector.webgl){
+      Detector.addGetWebGLMessage();
+    } else {
+		var container = document.getElementById('container');
+		var globe = new DAT.Globe(container);
+		var xhr = new XMLHttpRequest();
+//		window.onload = lastUpdated();
+		window.onload = loadFreq("freq.json"); // createGlobe('all_day.json');
+	}
+	
+	function changePrev()
+	{
+	   change=-1;
+	   document.getElementById("prev").src="prevd.png";
+	   document.getElementById("play").src="play.png";
+	   document.getElementById("next").src="next.png";
+   }
+	
+	function changeNext()
+	{
+	   change=1;
+	   document.getElementById("prev").src="prev.png";
+	   document.getElementById("play").src="play.png";
+	   document.getElementById("next").src="nextd.png";
+   }
+	
+	var globeAnimated = false; //Has the globe already been animated?
+	function createGlobe(jsonInput){	
+		setCurrentInfoStatusLoading(jsonInput)
+		xhr.open('GET', 'data/'+jsonInput, true);
+		xhr.onreadystatechange = function (e) {
+			if (xhr.readyState == 4 && xhr.status == 200){
+				globe.removeAllPoints();
+				var data = JSON.parse(xhr.responseText);
+				for (var i = 0; i < data.length; i++){
+//					globe.addData(data[i][1], {format: 'magnitude', name: 'Earthquakes'});
+					globe.addData(pointdata, {format: 'magnitude', name: 'Earthquakes'});
+				}
+				
+				globe.createPoints();
+				if (!globeAnimated){ //globe becomes really slow if when animated again - this prevents that
+					globe.animate();
+					globeAnimated = true;
+				}
+				
+				document.body.style.backgroundImage = 'none';
+			}
+		};
+		xhr.send(null);
+//		setCurrentInfoStatus(jsonInput);
+	}
+	
+		function updateFreq()
+	{	
+
+		update=true;
+				if (change==0)
+				{
+				    d = new Date();
+					t = d.getTime()/1000;
+				}
+				else
+				{
+					if (change>0)
+					{
+					  t = t + 41; 
+					}
+					else
+					{
+					  t = t - 41;
+					}
+					d.setTime(t*1000);
+				}
+				pointdata=[];
+
+				for (var i = 0; i < data.length; i+=3){
+				var diff=t%data[2+i];
+//								document.getElementById("ce").innerHTML = "Test data: update "+diff;	
+				  if (diff<limit)
+					{
+					  pointdata.push(data[0+i]);
+ 					  pointdata.push(data[1+i]);
+ 					  pointdata.push(0.3*(1-diff/limit));
+					
+//				document.getElementById("ce").innerHTML = "Test data: "+t;						  
+					}
+									globe.removeAllPoints();
+					globe.addData(pointdata, {format: 'magnitude', name: 'Earthquakes'});
+				}
+				
+				globe.createPoints();
+				if (!globeAnimated){ //globe becomes really slow if when animated again - this prevents that
+					globe.animate();
+					globeAnimated = true;
+				}
+		
+				document.body.style.backgroundImage = 'none';
+			setCurrentInfoStatus('datum');
+			  	  setTimeout(updateFreq, 1000);
+		
+	}
+	
+	function loadFreq(jsonInput){	
+	   document.getElementById("prev").src="prev.png";
+	   document.getElementById("play").src="playd.png";
+	   document.getElementById("next").src="next.png";
+		setCurrentInfoStatusLoading(jsonInput)
+		xhr.open('GET', jsonInput, true);
+	    var d = new Date();
+		change = 0;
+		xhr.onreadystatechange = function (e) {
+			if (xhr.readyState == 4 && xhr.status == 200){
+//				globe.removeAllPoints();
+				data = JSON.parse(xhr.responseText);
+				t = d.getTime()/1000;
+				pointdata=[];
+				document.getElementById("ce").innerHTML = "Load data: "+data.length;	
+				for (var i = 0; i < data.length; i+=3){
+				  var diff=t%data[2+i];
+				  if (diff<limit)
+					{
+					  pointdata.push(data[0+i]);
+ 					  pointdata.push(data[1+i]);
+ 					  pointdata.push(0.3*(1-diff/limit));
+					
+//				document.getElementById("ce").innerHTML = "Test data: "+t;						  
+						}
+//					globe.addData(data[i][1], {format: 'magnitude', name: 'Earthquakes'});
+					globe.addData(pointdata, {format: 'magnitude', name: 'Earthquakes'});
+				}
+				
+				globe.createPoints();
+				if (!globeAnimated){ //globe becomes really slow if when animated again - this prevents that
+					globe.animate();
+					globeAnimated = true;
+			}
+//				document.getElementById("ce").innerHTML = "Test data: "+data[2].toString();	
+				
+				document.body.style.backgroundImage = 'none';
+				if (update==false) { updateFreq(); }
+			}
+		};
+		xhr.send(null);
+		setCurrentInfoStatus(jsonInput);
+
+	}
+	
+
+	
+	function setCurrentInfoStatusLoading(jsonInput){
+		var response="<center> " + moment(d).format('MMMM Do YYYY, h:mm:ss a') + "</<center>";	
+		document.getElementById("currentInfoStatus").innerHTML = response;
+	}
+	
+	function setCurrentInfoStatus(jsonInput){
+		var response="<center> " + moment(d).format('MMMM Do YYYY, h:mm:ss a') + "</<center>";	
+		document.getElementById("currentInfoStatus").innerHTML = response;
+	}
+ 
+/* 
+	function lastUpdated(){
+		var done = false;
+		var xhr = new XMLHttpRequest();
+		xhr.open('GET', 'data/last_updated.json', true);
+		xhr.send(null);
+		xhr.onreadystatechange = function() {
+			if (xhr.readyState === 4 && xhr.status === 200 ) {
+				 var time = JSON.stringify(JSON.parse(xhr.responseText)).replace(/['"]+/g, '');		 
+		}
+		var response = "Last updated: " + time;
+		document.getElementById('lastUpdated').innerHTML = response;
+		}
+	}
+	
+	function updatePoints()
+	{
+
+	  var i = 2; 
+	  while (i < pointdata.length) 
+	  {
+         pointdata[i]=pointdata[i]-0.005;
+		 if (pointdata[i]<0) { pointdata[i]=0; }
+		 i=i+3;
+	  }
+	  createGlobe('all_day.json');
+  	  setTimeout(updatePoints, 1000);
+
+	}
+*/
+	
+//	updatePoints();
+//	loadFreq("freq.json");
+	
+
+	
+  </script>
+
+  </body>
+
+</html>
